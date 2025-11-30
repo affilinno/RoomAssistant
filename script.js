@@ -6,6 +6,12 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwrIiZaMpwxUh2qi6mMt9R3
 
 // Init
 window.onload = function () {
+    // API URLチェック
+    if (API_URL.includes('YOUR_SCRIPT_ID_HERE') || API_URL === '') {
+        alert('【重要】script.jsのAPI_URLが正しく設定されていません。\nGASをデプロイし、発行されたURLをscript.jsのAPI_URLに書き写してください。');
+        return;
+    }
+
     const savedUser = localStorage.getItem('room_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
