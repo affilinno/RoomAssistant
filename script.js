@@ -370,7 +370,18 @@ async function handleSearch(e, type) {
             message += ` (${minPrice || '0'}円〜${maxPrice || '上限なし'}円)`;
         }
     } else if (type === 'url') {
-        keyword = document.getElementById('search-url').value;
+        const rawInput = document.getElementById('search-url').value;
+
+        // テキストからURLを抽出
+        const urlMatch = rawInput.match(/(https?:\/\/[^\s]+)/);
+        if (urlMatch) {
+            keyword = urlMatch[1];
+            // エディットボックスをURLのみに更新
+            document.getElementById('search-url').value = keyword;
+        } else {
+            keyword = rawInput;
+        }
+
         message = 'URL検索結果';
     }
 
