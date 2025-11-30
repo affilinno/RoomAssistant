@@ -2,7 +2,7 @@
 let currentUser = null;
 let allGenres = [];
 // GASのURLをハードコーディング
-const API_URL = 'https://script.google.com/macros/s/AKfycby6HE4nRjHAyRyYJBpBdPmSuzmHVlhfHZdim3PkEdqZj3tS7jZtaCTkj-JJrzlxRx3oww/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw_y4CL01QGWA0vpBmFAz6rMkm5kbthd7m8OXXikxhz_pLNy3KTfRPFDSkd_Z9C4g0pyg/exec';
 
 // Init
 window.onload = function () {
