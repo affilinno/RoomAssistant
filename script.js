@@ -82,7 +82,6 @@ function showDashboard() {
 
     updatePremiumUI();
 
-    // Premiumユーザーで最初のタブがランダム表示の場合、自動で読み込み
     if (currentUser.plan === 'Premium') {
         loadRandomGenres();
     } else {
@@ -162,7 +161,6 @@ function updatePremiumUI() {
         promoBanner.classList.add('hidden');
         homeRefresh.classList.add('hidden');
 
-        // Premiumユーザーの場合、価格帯を反映
         const rankingMin = document.getElementById('ranking-min-price');
         const rankingMax = document.getElementById('ranking-max-price');
         const searchMin = document.getElementById('search-min-price');
@@ -192,7 +190,6 @@ function switchTab(tabId) {
     target.classList.remove('hidden');
     target.classList.add('active');
 
-    // ランダム表示タブをクリックしたら自動で読み込み
     if (tabId === 'random') {
         loadRandomGenres();
     }
@@ -275,7 +272,6 @@ async function saveSettings() {
             closeSettings();
             updatePremiumUI();
 
-            // ランダム表示を再読み込み
             if (currentUser.plan === 'Premium') {
                 loadRandomGenres();
             } else {
@@ -299,7 +295,6 @@ async function loadRankingByGenre() {
     const maxPrice = document.getElementById('ranking-max-price').value;
     const container = document.getElementById('dashboard-content');
 
-    // 価格帯が変更された場合、設定を更新
     await updatePriceSettings(minPrice, maxPrice);
 
     container.innerHTML = '<div class="loading-spinner"></div><div style="text-align:center">ランキング読み込み中...</div>';
@@ -362,7 +357,6 @@ async function handleSearch(e, type) {
         minPrice = document.getElementById('search-min-price').value;
         maxPrice = document.getElementById('search-max-price').value;
 
-        // 価格帯が変更された場合、設定を更新
         await updatePriceSettings(minPrice, maxPrice);
 
         message = `検索結果: ${keyword}`;
@@ -370,16 +364,26 @@ async function handleSearch(e, type) {
             message += ` (${minPrice || '0'}円〜${maxPrice || '上限なし'}円)`;
         }
     } else if (type === 'url') {
-        const rawInput = document.getElementById('search-url').value;
+        const rawInput = document.getElementById('search-url').value.trim();
 
-        // テキストからURLを抽出
-        const urlMatch = rawInput.match(/(https?:\/\/[^\s]+)/);
+        // テキストからURLを抽出（改行、空白を含むテキストに対応）
+        const urlPattern = /https?:\/\/(?:item\.)?rakuten\.co\.jp\/[^\s\n\r]*/i;
+        const urlMatch = rawInput.match(urlPattern);
+
         if (urlMatch) {
-            keyword = urlMatch[1];
-            // エディットボックスをURLのみに更新
+            keyword = urlMatch[0];
             document.getElementById('search-url').value = keyword;
+            showToast('URLを抽出しました');
         } else {
-            keyword = rawInput;
+            const generalUrlPattern = /https?:\/\/[^\s\n\r]+/;
+            const generalMatch = rawInput.match(generalUrlPattern);
+            if (generalMatch) {
+                keyword = generalMatch[0];
+                document.getElementById('search-url').value = keyword;
+                showToast('URLを抽出しました');
+            } else {
+                keyword = rawInput;
+            }
         }
 
         message = 'URL検索結果';
@@ -408,7 +412,6 @@ async function handleSearch(e, type) {
 }
 
 async function updatePriceSettings(minPrice, maxPrice) {
-    // 現在の設定と変更があるかチェック
     if ((minPrice || '') !== (currentUser.priceMin || '') || (maxPrice || '') !== (currentUser.priceMax || '')) {
         try {
             const res = await callApi('updateProfile', {
@@ -423,7 +426,6 @@ async function updatePriceSettings(minPrice, maxPrice) {
                 currentUser = res.user;
                 localStorage.setItem('room_user', JSON.stringify(currentUser));
 
-                // フォームにも反映
                 const rankingMin = document.getElementById('ranking-min-price');
                 const rankingMax = document.getElementById('ranking-max-price');
                 const searchMin = document.getElementById('search-min-price');
