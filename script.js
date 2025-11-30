@@ -35,9 +35,21 @@ async function callApi(action, params = {}, method = 'POST') {
         options.body = JSON.stringify({ action, ...params });
     }
 
-    const res = await fetch(url, options);
-    const json = await res.json();
-    return json;
+    try {
+        const res = await fetch(url, options);
+        const text = await res.text();
+
+        try {
+            const json = JSON.parse(text);
+            return json;
+        } catch (e) {
+            console.error('JSON Parse Error:', text);
+            throw new Error('サーバーエラー（HTMLが返されました）: ' + text.substring(0, 100) + '...');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        throw err;
+    }
 }
 
 // Load Genres
