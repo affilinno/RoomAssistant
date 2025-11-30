@@ -102,7 +102,7 @@ function showDashboard() {
 }
 
 function hideAll() {
-    document.getElement ById('login-view').classList.add('hidden');
+    document.getElementById('login-view').classList.add('hidden');
     document.getElementById('register-view').classList.add('hidden');
     document.getElementById('dashboard-view').style.display = 'none';
     document.getElementById('app-header').classList.add('hidden');
