@@ -90,7 +90,7 @@ function showDashboard() {
 }
 
 function hideAll() {
-    document.getElementById('login-view').classList.add('hidden');
+    document.getElement ById('login-view').classList.add('hidden');
     document.getElementById('register-view').classList.add('hidden');
     document.getElementById('dashboard-view').style.display = 'none';
     document.getElementById('app-header').classList.add('hidden');
@@ -366,7 +366,6 @@ async function handleSearch(e, type) {
     } else if (type === 'url') {
         const rawInput = document.getElementById('search-url').value.trim();
 
-        // テキストからURLを抽出（改行、空白を含むテキストに対応）
         const urlPattern = /https?:\/\/(?:item\.)?rakuten\.co\.jp\/[^\s\n\r]*/i;
         const urlMatch = rawInput.match(urlPattern);
 
@@ -508,7 +507,8 @@ function openItemModal(item) {
             if (!res.success) throw new Error(res.message);
 
             const text = res.data;
-            const roomUrl = `https://room.rakuten.co.jp/mix?itemcode=${item.code.replace(/:/g, '%3A')}&scid=we_room_upc60`;
+            // ROOM URLの正しい形式（/itemsなし）
+            const roomUrl = `https://room.rakuten.co.jp/mix?itemcode=${encodeURIComponent(item.code)}&scid=we_room_upc60`;
 
             content.innerHTML = `
         <div style="text-align:center; margin-bottom:1rem;">
@@ -556,6 +556,26 @@ function showToast(msg) {
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function extractUrlFromInput() {
+    const input = document.getElementById('search-url');
+    const rawValue = input.value;
+
+    if (!rawValue || rawValue.startsWith('http')) return;
+
+    const urlPattern = /https?:\/\/(?:item\.)?rakuten\.co\.jp\/[^\s\n\r]*/i;
+    const urlMatch = rawValue.match(urlPattern);
+
+    if (urlMatch) {
+        input.value = urlMatch[0];
+    } else {
+        const generalUrlPattern = /https?:\/\/[^\s\n\r]+/;
+        const generalMatch = rawValue.match(generalUrlPattern);
+        if (generalMatch) {
+            input.value = generalMatch[0];
+        }
+    }
 }
 
 document.getElementById('modal').addEventListener('click', e => {
