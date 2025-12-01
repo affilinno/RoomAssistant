@@ -179,10 +179,46 @@
         <div class="plan-selection">
           <label class="plan-option">
             <input type="radio" name="plan" value="Free" onchange="togglePlan()">
-            <input type="number" id="settings-min-price" placeholder="最低価格" class="price-input">
-            <span class="price-separator">〜</span>
-            <input type="number" id="settings-max-price" placeholder="最高価格" class="price-input">
-            <span class="price-unit">円</span>
+            <span class="plan-name">Free</span>
+          </label>
+          <label class="plan-option">
+            <input type="radio" name="plan" value="Premium" onchange="togglePlan()">
+            <span class="plan-name premium-text"><i class="fas fa-crown"></i> Premium</span>
+          </label>
+        </div>
+        <p class="settings-desc">Premiumにすると、検索機能・URL投稿・カスタムAI・価格帯設定が有効になります。</p>
+
+        <!-- Stripe課金ボタン（Freeユーザー用） -->
+        <div id="upgrade-button-container" class="hidden" style="margin-top: 1rem;">
+          <button class="btn btn-premium" onclick="upgradeToPremium()"
+            style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.8rem; font-weight: bold;">
+            <i class="fas fa-crown"></i> Premiumにアップグレード（月額980円）
+          </button>
+          <p style="text-align: center; font-size: 0.85rem; color: #999; margin-top: 0.5rem;">
+            Stripeの安全な決済ページへ移動します
+          </p>
+        </div>
+
+        <!-- サブスク解約ボタン（Premiumユーザー用） -->
+        <div id="cancel-subscription-container" class="hidden" style="margin-top: 1rem;">
+          <button class="btn" onclick="cancelSubscription()" style="width: 100%; background: #dc3545; color: white;">
+            <i class="fas fa-times-circle"></i> サブスクリプションを解約
+          </button>
+          <p style="text-align: center; font-size: 0.85rem; color: #999; margin-top: 0.5rem;">
+            解約後も次回請求日まではPremiumをご利用いただけます
+          </p>
+        </div>
+      </div>
+
+      <div id="premium-settings" class="settings-section hidden">
+        <h3>価格帯設定 (Premium専用)</h3>
+        <p class="settings-desc">設定した価格帯は保存され、次回検索時にも適用されます。</p>
+        <div class="filter-row">
+          <label class="filter-label">価格帯</label>
+          <input type="number" id="settings-min-price" placeholder="最低価格" class="price-input">
+          <span class="price-separator">〜</span>
+          <input type="number" id="settings-max-price" placeholder="最高価格" class="price-input">
+          <span class="price-unit">円</span>
         </div>
 
         <h3 style="margin-top:1.5rem;">AIキャラクター設定</h3>
