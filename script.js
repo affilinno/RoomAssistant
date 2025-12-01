@@ -424,7 +424,7 @@ async function handleSearch(e, type) {
             throw new Error(res.message);
         }
     } catch (err) {
-        container.innerHTML = `<div style="color:red; text-align:center">検索エラー: ${err.message}</div>`;
+        container.innerHTML = `<div style="color:red; text-align:center; white-space: pre-wrap; padding: 1rem; border: 1px solid red; margin: 1rem;">検索エラー: ${err.message}</div>`;
     }
 }
 
