@@ -406,7 +406,11 @@ async function handleSearch(e, type) {
         message = 'URL検索結果';
     }
 
-    container.innerHTML = '<div class="loading-spinner"></div><div style="text-align:center">商品を検索中...</div>';
+    const loadingMessage = (type === 'url')
+        ? 'URLから商品情報を取得中...'
+        : '商品を検索中...';
+
+    container.innerHTML = `<div class="loading-spinner"></div><div style="text-align:center">${loadingMessage}</div>`;
 
     try {
         const res = await callApi('searchItems', { keyword, genreId: '', minPrice, maxPrice });
