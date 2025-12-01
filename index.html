@@ -179,25 +179,10 @@
         <div class="plan-selection">
           <label class="plan-option">
             <input type="radio" name="plan" value="Free" onchange="togglePlan()">
-            <span class="plan-name">Free</span>
-          </label>
-          <label class="plan-option">
-            <input type="radio" name="plan" value="Premium" onchange="togglePlan()">
-            <span class="plan-name premium-text"><i class="fas fa-crown"></i> Premium</span>
-          </label>
-        </div>
-        <p class="settings-desc">Premiumにすると、検索機能・URL投稿・カスタムAI・価格帯設定が有効になります。</p>
-      </div>
-
-      <div id="premium-settings" class="settings-section hidden">
-        <h3>価格帯設定 (Premium専用)</h3>
-        <p class="settings-desc">設定した価格帯は保存され、次回検索時にも適用されます。</p>
-        <div class="filter-row">
-          <label class="filter-label">価格帯</label>
-          <input type="number" id="settings-min-price" placeholder="最低価格" class="price-input">
-          <span class="price-separator">〜</span>
-          <input type="number" id="settings-max-price" placeholder="最高価格" class="price-input">
-          <span class="price-unit">円</span>
+            <input type="number" id="settings-min-price" placeholder="最低価格" class="price-input">
+            <span class="price-separator">〜</span>
+            <input type="number" id="settings-max-price" placeholder="最高価格" class="price-input">
+            <span class="price-unit">円</span>
         </div>
 
         <h3 style="margin-top:1.5rem;">AIキャラクター設定</h3>
