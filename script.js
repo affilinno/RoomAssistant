@@ -2,7 +2,7 @@
 let currentUser = null;
 let allGenres = [];
 // GASのURLをハードコーディング
-const API_URL = 'https://script.google.com/macros/s/AKfycbyCS9gAcnYe2vf52Jpa29yNZRZT0kOimZD2fvdBoxwp3gg75LQDe1jOojgVffGFOrJJeg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw83HsJ3_s9FhzdWFm_dHS0G-FtxvqgHvesG-w0tcRuwvqpWmi_hHq6tsOA1iQ0w58ylA/exec';
 
 // Init
 window.onload = function () {
@@ -306,6 +306,75 @@ async function saveSettings() {
     }
 }
 
+// === Stripe課金機能 ===
+
+/**
+ * Premiumプランにアップグレード（Stripe Checkoutへリダイレクト）
+ */
+async function upgradeToPremium() {
+    if (!currentUser) {
+        showToast('ログインが必要です');
+        return;
+    }
+
+    if (currentUser.plan === 'Premium') {
+        showToast('既にPremiumプランです');
+        return;
+    }
+
+    if (!confirm('Premiumプラン（月額980円）にアップグレードしますか？')) {
+        return;
+    }
+
+    try {
+        const res = await callApi('createCheckoutSession', {
+            email: currentUser.email
+        });
+
+        if (res.success && res.url) {
+            // Stripe Checkoutページへリダイレクト
+            window.location.href = res.url;
+        } else {
+            showToast('エラー: ' + (res.message || '決済ページの作成に失敗しました'));
+        }
+    } catch (err) {
+        showToast('エラー: ' + err.message);
+    }
+}
+
+/**
+ * サブスクリプションをキャンセル
+ */
+async function cancelSubscription() {
+    if (!currentUser || currentUser.plan !== 'Premium') {
+        showToast('Premiumプランではありません');
+        return;
+    }
+
+    if (!confirm('Premiumプランを解約しますか？\n次回の請求日までは引き続きご利用いただけます。')) {
+        return;
+    }
+
+    try {
+        const res = await callApi('cancelSubscription', {
+            email: currentUser.email
+        });
+
+        if (res.success) {
+            showToast('サブスクリプションを解約しました');
+            // プランをFreeに更新
+            currentUser.plan = 'Free';
+            localStorage.setItem('room_user', JSON.stringify(currentUser));
+            updatePremiumUI();
+            loadDashboardData();
+        } else {
+            showToast('エラー: ' + (res.message || '解約に失敗しました'));
+        }
+    } catch (err) {
+        showToast('エラー: ' + err.message);
+    }
+}
+
 async function loadRankingByGenre() {
     const genreId = document.getElementById('ranking-genre').value;
     const genreName = document.getElementById('ranking-genre').options[document.getElementById('ranking-genre').selectedIndex].text;
@@ -340,7 +409,7 @@ async function loadRankingByGenre() {
 
 async function loadRandomGenres() {
     const container = document.getElementById('dashboard-content');
-    container.innerHTML = '<div class="loading-spinner"></div><div style="text-align:center">ランダムジャンル読み込み中...</div>';
+    container.innerHTML = '<div class="loading-spinner"></div><div style="text-align:center">ランダム商品読み込み中...</div>';
 
     const minPrice = currentUser.priceMin || '';
     const maxPrice = currentUser.priceMax || '';
