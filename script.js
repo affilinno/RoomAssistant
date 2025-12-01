@@ -161,10 +161,17 @@ function togglePlan() {
 
 function updateSettingsUI(isPremium) {
     const premiumSettings = document.getElementById('premium-settings');
+    const upgradeButtonContainer = document.getElementById('upgrade-button-container');
+    const cancelButtonContainer = document.getElementById('cancel-subscription-container');
+
     if (isPremium) {
         premiumSettings.classList.remove('hidden');
+        upgradeButtonContainer.classList.add('hidden');
+        cancelButtonContainer.classList.remove('hidden');
     } else {
         premiumSettings.classList.add('hidden');
+        upgradeButtonContainer.classList.remove('hidden');
+        cancelButtonContainer.classList.add('hidden');
     }
 }
 
