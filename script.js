@@ -149,10 +149,21 @@ function updateSettingsUI(isPremium) {
     const upgradeButtonContainer = document.getElementById('upgrade-button-container');
     const cancelButtonContainer = document.getElementById('cancel-subscription-container');
 
+    // 解約予約中かどうかのチェック
+    const isCanceled = currentUser.cancelAtPeriodEnd === true;
+
     if (isPremium) {
         premiumSettings.classList.remove('hidden');
         upgradeButtonContainer.classList.add('hidden');
-        cancelButtonContainer.classList.remove('hidden');
+
+        if (isCanceled) {
+            cancelButtonContainer.innerHTML = '<p style="color: #e74c3c; font-weight: bold;">解約予約済み（期間終了までご利用いただけます）</p>';
+            cancelButtonContainer.classList.remove('hidden');
+        } else {
+            // ボタンを再生成してイベントリスナーをセットし直す（innerHTML書き換え対策）
+            cancelButtonContainer.innerHTML = '<button class="btn" style="background: #999;" onclick="cancelSubscription()">Premiumプランを解約</button>';
+            cancelButtonContainer.classList.remove('hidden');
+        }
     } else {
         premiumSettings.classList.add('hidden');
         upgradeButtonContainer.classList.remove('hidden');
@@ -160,101 +171,7 @@ function updateSettingsUI(isPremium) {
     }
 }
 
-function updatePremiumUI() {
-    const isPremium = currentUser.plan === 'Premium';
-    const toolbar = document.getElementById('premium-toolbar');
-    const promoBanner = document.getElementById('premium-promo');
-    const homeRefresh = document.getElementById('home-refresh');
-
-    if (isPremium) {
-        toolbar.classList.remove('hidden');
-        promoBanner.classList.add('hidden');
-        homeRefresh.classList.add('hidden');
-    } else {
-        toolbar.classList.add('hidden');
-        promoBanner.classList.remove('hidden');
-        homeRefresh.classList.remove('hidden');
-    }
-}
-
-async function saveSettings() {
-    const btn = document.getElementById('save-settings-btn');
-    btn.disabled = true;
-    btn.textContent = '保存中...';
-
-    const selected = document.querySelector('input[name="plan"]:checked').value;
-    const plan = selected;
-    const customPrompt = document.getElementById('custom-prompt').value;
-    const priceMin = document.getElementById('settings-min-price').value;
-    const priceMax = document.getElementById('settings-max-price').value;
-
-    try {
-        const res = await callApi('updateProfile', {
-            email: currentUser.email,
-            plan: plan,
-            customPrompt: customPrompt,
-            priceMin: priceMin,
-            priceMax: priceMax
-        });
-
-        if (res.success) {
-            currentUser = res.user;
-            localStorage.setItem('room_user', JSON.stringify(currentUser));
-            showToast('設定を保存しました');
-            closeSettings();
-            updatePremiumUI();
-
-            if (currentUser.plan === 'Premium') {
-                loadRandomGenres();
-            } else {
-                loadDashboardData();
-            }
-        } else {
-            showToast(res.message);
-        }
-    } catch (err) {
-        showToast('エラー: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '保存する';
-    }
-}
-
-// === Stripe課金機能 ===
-
-/**
- * Premiumプランにアップグレード（Stripe Checkoutへリダイレクト）
- */
-async function upgradeToPremium() {
-    if (!currentUser) {
-        showToast('ログインが必要です');
-        return;
-    }
-
-    if (currentUser.plan === 'Premium') {
-        showToast('既にPremiumプランです');
-        return;
-    }
-
-    if (!confirm('Premiumプラン（月額980円）にアップグレードしますか？')) {
-        return;
-    }
-
-    try {
-        const res = await callApi('createCheckoutSession', {
-            email: currentUser.email
-        });
-
-        if (res.success && res.url) {
-            // Stripe Checkoutページへリダイレクト
-            window.location.href = res.url;
-        } else {
-            showToast('エラー: ' + (res.message || '決済ページの作成に失敗しました'));
-        }
-    } catch (err) {
-        showToast('エラー: ' + err.message);
-    }
-}
+// ... (中略) ...
 
 /**
  * サブスクリプションをキャンセル
@@ -275,12 +192,11 @@ async function cancelSubscription() {
         });
 
         if (res.success) {
-            showToast('サブスクリプションを解約しました');
-            // プランをFreeに更新
-            currentUser.plan = 'Free';
+            showToast(res.message);
+            // 解約予約フラグを立てる（プランはPremiumのまま）
+            currentUser.cancelAtPeriodEnd = true;
             localStorage.setItem('room_user', JSON.stringify(currentUser));
-            updatePremiumUI();
-            loadDashboardData();
+            updateSettingsUI(true);
         } else {
             showToast('エラー: ' + (res.message || '解約に失敗しました'));
         }
