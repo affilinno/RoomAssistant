@@ -14,52 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkStripeCallback();
 });
 
-async function checkStripeCallback() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const checkoutStatus = urlParams.get('checkout');
-
-    if (checkoutStatus === 'success') {
-        // 決済成功時：ユーザー情報を最新にするために再ログイン（トークン更新など）
-        // ここでは簡易的に既存の認証情報を使ってプロフィールを再取得する
-        if (currentUser) {
-            // 少し待ってから更新（Webhook処理のタイムラグ考慮）
-            showToast('決済を確認中...');
-            setTimeout(async () => {
-                try {
-                    // 最新のユーザー情報を取得（パスワード不要）
-                    const res = await callApi('getUserInfo', {
-                        email: currentUser.email
-                    });
-
-                    if (res.success) {
-                        // ユーザー情報を更新
-                        currentUser = res.user;
-                        localStorage.setItem('room_user', JSON.stringify(currentUser));
-
-                        if (currentUser.plan === 'Premium') {
-                            showToast('Premiumプランへのアップグレードが完了しました！');
-                            updatePremiumUI();
-                            // Premium機能（ランダム表示）に切り替え
-                            switchTab('random');
-                        } else {
-                            // まだ反映されていない場合
-                            showToast('決済を確認しました。反映まで少々お待ちください。');
-                        }
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            }, 3000);
-        }
-
-        // URLパラメータを削除してクリーンにする
-        window.history.replaceState({}, document.title, window.location.pathname);
-
-    } else if (checkoutStatus === 'cancel') {
-        showToast('決済がキャンセルされました');
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-}
 
 function checkLogin() {
     const userJson = localStorage.getItem('room_user');
@@ -480,53 +434,12 @@ function extractUrlFromInput() {
     if (urlMatch) {
         input.value = urlMatch[0];
     }
-}
 
-function renderDashboard(data) {
-    const container = document.getElementById('dashboard-content');
-    container.innerHTML = '';
+    function showItemModal(item) {
+        const modal = document.getElementById('modal');
+        const content = document.getElementById('modal-content');
 
-    if (Object.keys(data).length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:2rem;">データがありません</p>';
-        return;
-    }
-
-    for (const [category, items] of Object.entries(data)) {
-        if (!items || items.length === 0) continue;
-
-        const section = document.createElement('div');
-        section.className = 'genre-section';
-        section.innerHTML = `<h3 class="genre-title">${category}</h3>`;
-
-        const grid = document.createElement('div');
-        grid.className = 'item-grid';
-
-        items.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = `
-                <img src="${item.imageUrl}" alt="${item.name}">
-                <div class="item-info">
-                    <div class="item-price">¥${item.price.toLocaleString()}</div>
-                    <div class="item-title">${item.name}</div>
-                </div>
-            `;
-            card.onclick = () => showItemModal(item);
-            grid.appendChild(card);
-        });
-
-        section.appendChild(grid);
-        container.appendChild(section);
-    }
-}
-
-// === 商品詳細モーダル ===
-
-function showItemModal(item) {
-    const modal = document.getElementById('modal');
-    const content = document.getElementById('modal-content');
-
-    content.innerHTML = `
+        content.innerHTML = `
         <button class="modal-close" onclick="closeModal()">&times;</button>
         <div class="modal-body">
             <div class="modal-image">
@@ -557,94 +470,95 @@ function showItemModal(item) {
         </div>
     `;
 
-    modal.style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('modal').style.display = 'none';
-}
-
-async function generatePost(itemName) {
-    const btn = document.getElementById('gen-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
-
-    try {
-        const res = await callApi('generateRecommendation', {
-            itemName: itemName,
-            customPrompt: currentUser.customPrompt
-        });
-
-        if (res.success) {
-            document.getElementById('generated-content').classList.remove('hidden');
-            document.getElementById('post-text').value = res.data;
-        } else {
-            showToast(res.message);
-        }
-    } catch (err) {
-        showToast('エラー: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic"></i> 再生成';
-    }
-}
-
-function copyText() {
-    const text = document.getElementById('post-text');
-    text.select();
-    document.execCommand('copy');
-    showToast('コピーしました！');
-}
-
-// === 共通関数 ===
-
-async function callApi(action, params = {}, method = 'POST') {
-    let url = API_URL;
-    let options = {
-        method: method,
-        redirect: 'follow'
-    };
-
-    if (method === 'GET') {
-        const query = new URLSearchParams({ action, ...params }).toString();
-        url += (url.includes('?') ? '&' : '?') + query;
-    } else {
-        options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-        options.body = JSON.stringify({ action, ...params });
+        modal.style.display = 'flex';
     }
 
-    try {
-        const res = await fetch(url, options);
-        const text = await res.text();
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    async function generatePost(itemName) {
+        const btn = document.getElementById('gen-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
 
         try {
-            const json = JSON.parse(text);
-            return json;
-        } catch (e) {
-            console.error('JSON Parse Error:', text);
-            throw new Error('サーバーエラー（HTMLが返されました）: ' + text.substring(0, 100) + '...');
+            const res = await callApi('generateRecommendation', {
+                itemName: itemName,
+                customPrompt: currentUser.customPrompt
+            });
+
+            if (res.success) {
+                document.getElementById('generated-content').classList.remove('hidden');
+                document.getElementById('post-text').value = res.data;
+            } else {
+                showToast(res.message);
+            }
+        } catch (err) {
+            showToast('エラー: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic"></i> 再生成';
         }
-    } catch (err) {
-        console.error('API Error:', err);
-        throw err;
     }
-}
 
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = 'toast show';
-    setTimeout(() => {
-        toast.className = 'toast';
-    }, 3000);
-}
+    function copyText() {
+        const text = document.getElementById('post-text');
+        text.select();
+        document.execCommand('copy');
+        showToast('コピーしました！');
+    }
 
-function goToRandom() {
-    if (currentUser) {
-        if (currentUser.plan === 'Premium') {
-            switchTab('random');
+    // === 共通関数 ===
+
+    async function callApi(action, params = {}, method = 'POST') {
+        let url = API_URL;
+        let options = {
+            method: method,
+            redirect: 'follow'
+        };
+
+        if (method === 'GET') {
+            const query = new URLSearchParams({ action, ...params }).toString();
+            url += (url.includes('?') ? '&' : '?') + query;
         } else {
-            loadDashboardData();
+            options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+            options.body = JSON.stringify({ action, ...params });
+        }
+
+        try {
+            const res = await fetch(url, options);
+            const text = await res.text();
+
+            try {
+                const json = JSON.parse(text);
+                return json;
+            } catch (e) {
+                console.error('JSON Parse Error:', text);
+                throw new Error('サーバーエラー（HTMLが返されました）: ' + text.substring(0, 100) + '...');
+            }
+        } catch (err) {
+            console.error('API Error:', err);
+            throw err;
+        }
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast show';
+        setTimeout(() => {
+            toast.className = 'toast';
+        }, 3000);
+    }
+
+    function goToRandom() {
+        if (currentUser) {
+            if (currentUser.plan === 'Premium') {
+                switchTab('random');
+            } else {
+                loadDashboardData();
+            }
         }
     }
 }
