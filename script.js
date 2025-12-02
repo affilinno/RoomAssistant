@@ -11,7 +11,55 @@ let currentTab = 'random';
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
     checkLogin();
+    checkStripeCallback();
 });
+
+async function checkStripeCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkoutStatus = urlParams.get('checkout');
+
+    if (checkoutStatus === 'success') {
+        // 決済成功時：ユーザー情報を最新にするために再ログイン（トークン更新など）
+        // ここでは簡易的に既存の認証情報を使ってプロフィールを再取得する
+        if (currentUser) {
+            // 少し待ってから更新（Webhook処理のタイムラグ考慮）
+            showToast('決済を確認中...');
+            setTimeout(async () => {
+                try {
+                    // 最新のユーザー情報を取得（パスワード不要）
+                    const res = await callApi('getUserInfo', {
+                        email: currentUser.email
+                    });
+
+                    if (res.success) {
+                        // ユーザー情報を更新
+                        currentUser = res.user;
+                        localStorage.setItem('room_user', JSON.stringify(currentUser));
+
+                        if (currentUser.plan === 'Premium') {
+                            showToast('Premiumプランへのアップグレードが完了しました！');
+                            updatePremiumUI();
+                            // Premium機能（ランダム表示）に切り替え
+                            switchTab('random');
+                        } else {
+                            // まだ反映されていない場合
+                            showToast('決済を確認しました。反映まで少々お待ちください。');
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 3000);
+        }
+
+        // URLパラメータを削除してクリーンにする
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+    } else if (checkoutStatus === 'cancel') {
+        showToast('決済がキャンセルされました');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
 
 function checkLogin() {
     const userJson = localStorage.getItem('room_user');
