@@ -25,6 +25,29 @@ function checkLogin() {
     }
 }
 
+// Stripeからのコールバック処理
+function checkStripeCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const sessionId = urlParams.get('session_id');
+
+    if (success === 'true' && sessionId) {
+        // 決済成功通知
+        showToast('決済を確認しました。反映までしばらくお待ちください。');
+
+        // URLパラメータをクリーンに
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // ユーザー情報を再取得（プラン更新を反映）
+        setTimeout(() => {
+            reloadUserData();
+        }, 2000);
+    } else if (success === 'false') {
+        showToast('決済がキャンセルされました。');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
 // === 画面切り替え ===
 
 function showLogin() {
@@ -205,6 +228,82 @@ async function cancelSubscription() {
     }
 }
 
+async function saveSettings() {
+    const btn = document.getElementById('save-settings-btn');
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+
+    const priceMin = document.getElementById('settings-min-price').value || '';
+    const priceMax = document.getElementById('settings-max-price').value || '';
+    const customPrompt = document.getElementById('custom-prompt').value || '';
+
+    try {
+        const res = await callApi('updateSettings', {
+            email: currentUser.email,
+            priceMin,
+            priceMax,
+            customPrompt
+        });
+
+        if (res.success) {
+            currentUser.priceMin = priceMin;
+            currentUser.priceMax = priceMax;
+            currentUser.customPrompt = customPrompt;
+            localStorage.setItem('room_user', JSON.stringify(currentUser));
+            showToast('設定を保存しました');
+            closeSettings();
+        } else {
+            showToast('エラー: ' + res.message);
+        }
+    } catch (err) {
+        showToast('エラー: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '保存する';
+    }
+}
+
+async function upgradeToPremium() {
+    if (!currentUser) {
+        showToast('ログインしてください');
+        return;
+    }
+
+    try {
+        const res = await callApi('createCheckoutSession', {
+            email: currentUser.email
+        });
+
+        if (res.success && res.url) {
+            // Stripe Checkoutページへリダイレクト
+            window.location.href = res.url;
+        } else {
+            showToast('エラー: ' + (res.message || '決済ページの作成に失敗しました'));
+        }
+    } catch (err) {
+        showToast('エラー: ' + err.message);
+    }
+}
+
+async function reloadUserData() {
+    if (!currentUser) return;
+
+    try {
+        const res = await callApi('getUserData', {
+            email: currentUser.email
+        });
+
+        if (res.success && res.user) {
+            currentUser = res.user;
+            localStorage.setItem('room_user', JSON.stringify(currentUser));
+            updatePremiumUI();
+            showToast('プラン情報を更新しました');
+        }
+    } catch (err) {
+        console.error('Failed to reload user data:', err);
+    }
+}
+
 // === ダッシュボード機能 ===
 
 function switchTab(tabName) {
@@ -350,12 +449,62 @@ function extractUrlFromInput() {
     if (urlMatch) {
         input.value = urlMatch[0];
     }
+}
 
-    function showItemModal(item) {
-        const modal = document.getElementById('modal');
-        const content = document.getElementById('modal-content');
+function renderDashboard(data) {
+    const container = document.getElementById('dashboard-content');
+    container.innerHTML = '';
 
-        content.innerHTML = `
+    for (const [genre, items] of Object.entries(data)) {
+        const section = document.createElement('div');
+        section.innerHTML = `
+            <h2 class="section-header">
+                <i class="fas fa-tags"></i> ${genre}
+                <span class="genre-badge">${items.length}件</span>
+            </h2>
+            <div class="grid" id="grid-${genre.replace(/\s+/g, '-')}"></div>
+        `;
+        container.appendChild(section);
+
+        const grid = section.querySelector('.grid');
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => showItemModal(item);
+            card.innerHTML = `
+                <img src="${item.imageUrl}" alt="${item.name}" class="card-img">
+                <div class="card-body">
+                    <div class="card-title">${item.name}</div>
+                    <div class="card-price">¥${item.price.toLocaleString()}</div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+}
+
+function updatePremiumUI() {
+    const isPremium = currentUser.plan === 'Premium';
+    const toolbar = document.getElementById('premium-toolbar');
+    const promo = document.getElementById('premium-promo');
+    const homeRefresh = document.getElementById('home-refresh');
+
+    if (isPremium) {
+        toolbar.classList.remove('hidden');
+        promo.classList.add('hidden');
+        homeRefresh.classList.add('hidden');
+    } else {
+        toolbar.classList.add('hidden');
+        promo.classList.remove('hidden');
+        homeRefresh.classList.remove('hidden');
+    }
+}
+
+function showItemModal(item) {
+    const modal = document.getElementById('modal');
+    const content = document.getElementById('modal-content');
+
+    content.innerHTML = `
         <button class="modal-close" onclick="closeModal()">&times;</button>
         <div class="modal-body">
             <div class="modal-image">
@@ -370,7 +519,7 @@ function extractUrlFromInput() {
                     <a href="${item.url}" target="_blank" class="btn btn-outline">
                         <i class="fas fa-external-link-alt"></i> 楽天市場で見る
                     </a>
-                    <button class="btn" onclick="generatePost('${item.name.replace(/'/g, "\\'")}')" id="gen-btn">
+                    <button class="btn" onclick="generatePost('${item.name.replace(/'/g, "\\'")}'))" id="gen-btn">
                         <i class="fas fa-magic"></i> 紹介文を生成
                     </button>
                 </div>
@@ -386,95 +535,94 @@ function extractUrlFromInput() {
         </div>
     `;
 
-        modal.style.display = 'flex';
-    }
+    modal.style.display = 'flex';
+}
 
-    function closeModal() {
-        document.getElementById('modal').style.display = 'none';
-    }
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
 
-    async function generatePost(itemName) {
-        const btn = document.getElementById('gen-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+async function generatePost(itemName) {
+    const btn = document.getElementById('gen-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
 
-        try {
-            const res = await callApi('generateRecommendation', {
-                itemName: itemName,
-                customPrompt: currentUser.customPrompt
-            });
+    try {
+        const res = await callApi('generateRecommendation', {
+            itemName: itemName,
+            customPrompt: currentUser.customPrompt
+        });
 
-            if (res.success) {
-                document.getElementById('generated-content').classList.remove('hidden');
-                document.getElementById('post-text').value = res.data;
-            } else {
-                showToast(res.message);
-            }
-        } catch (err) {
-            showToast('エラー: ' + err.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-magic"></i> 再生成';
-        }
-    }
-
-    function copyText() {
-        const text = document.getElementById('post-text');
-        text.select();
-        document.execCommand('copy');
-        showToast('コピーしました！');
-    }
-
-    // === 共通関数 ===
-
-    async function callApi(action, params = {}, method = 'POST') {
-        let url = API_URL;
-        let options = {
-            method: method,
-            redirect: 'follow'
-        };
-
-        if (method === 'GET') {
-            const query = new URLSearchParams({ action, ...params }).toString();
-            url += (url.includes('?') ? '&' : '?') + query;
+        if (res.success) {
+            document.getElementById('generated-content').classList.remove('hidden');
+            document.getElementById('post-text').value = res.data;
         } else {
-            options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-            options.body = JSON.stringify({ action, ...params });
+            showToast(res.message);
         }
+    } catch (err) {
+        showToast('エラー: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> 再生成';
+    }
+}
+
+function copyText() {
+    const text = document.getElementById('post-text');
+    text.select();
+    document.execCommand('copy');
+    showToast('コピーしました！');
+}
+
+// === 共通関数 ===
+
+async function callApi(action, params = {}, method = 'POST') {
+    let url = API_URL;
+    let options = {
+        method: method,
+        redirect: 'follow'
+    };
+
+    if (method === 'GET') {
+        const query = new URLSearchParams({ action, ...params }).toString();
+        url += (url.includes('?') ? '&' : '?') + query;
+    } else {
+        options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+        options.body = JSON.stringify({ action, ...params });
+    }
+
+    try {
+        const res = await fetch(url, options);
+        const text = await res.text();
 
         try {
-            const res = await fetch(url, options);
-            const text = await res.text();
-
-            try {
-                const json = JSON.parse(text);
-                return json;
-            } catch (e) {
-                console.error('JSON Parse Error:', text);
-                throw new Error('サーバーエラー（HTMLが返されました）: ' + text.substring(0, 100) + '...');
-            }
-        } catch (err) {
-            console.error('API Error:', err);
-            throw err;
+            const json = JSON.parse(text);
+            return json;
+        } catch (e) {
+            console.error('JSON Parse Error:', text);
+            throw new Error('サーバーエラー（HTMLが返されました）: ' + text.substring(0, 100) + '...');
         }
+    } catch (err) {
+        console.error('API Error:', err);
+        throw err;
     }
+}
 
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = 'toast show';
-        setTimeout(() => {
-            toast.className = 'toast';
-        }, 3000);
-    }
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast show';
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
 
-    function goToRandom() {
-        if (currentUser) {
-            if (currentUser.plan === 'Premium') {
-                switchTab('random');
-            } else {
-                loadDashboardData();
-            }
+function goToRandom() {
+    if (currentUser) {
+        if (currentUser.plan === 'Premium') {
+            switchTab('random');
+        } else {
+            loadDashboardData();
         }
     }
 }
