@@ -367,11 +367,15 @@ function switchTab(tabName, event) {
         }
     }
 
-    // コンテンツの更新（activeクラスのみ使用）
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    // コンテンツの更新（hiddenクラスとactiveクラスを両方管理）
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.classList.add('hidden');  // 非表示にする
+    });
     const targetContent = document.getElementById(`tab-${tabName}`);
     if (targetContent) {
-        targetContent.classList.add('active');
+        targetContent.classList.remove('hidden');  // hidden削除
+        targetContent.classList.add('active');      // active追加
     }
 
     // コンテンツクリア
