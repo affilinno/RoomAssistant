@@ -454,6 +454,9 @@ async function loadRankingByGenre() {
     const minPrice = document.getElementById('ranking-min-price').value;
     const maxPrice = document.getElementById('ranking-max-price').value;
 
+    // 価格帯を保存して全フィールドを同期
+    await updatePriceRange(minPrice, maxPrice);
+
     const container = document.getElementById('dashboard-content');
     container.innerHTML = '<div class="loading-spinner"></div>';
 
@@ -484,6 +487,9 @@ async function handleSearch(e, type) {
         minPrice = document.getElementById('search-min-price').value;
         maxPrice = document.getElementById('search-max-price').value;
         message = `「${keyword}」の検索結果`;
+
+        // 価格帯を保存して全フィールドを同期
+        await updatePriceRange(minPrice, maxPrice);
     } else {
         keyword = document.getElementById('search-url').value;
         message = 'URL検索結果';
@@ -588,6 +594,12 @@ function setPriceRangeFields() {
     const searchMax = document.getElementById('search-max-price');
     if (searchMin) searchMin.value = priceMin;
     if (searchMax) searchMax.value = priceMax;
+
+    // 設定モーダル
+    const settingsMin = document.getElementById('settings-min-price');
+    const settingsMax = document.getElementById('settings-max-price');
+    if (settingsMin) settingsMin.value = priceMin;
+    if (settingsMax) settingsMax.value = priceMax;
 }
 
 
@@ -790,5 +802,56 @@ async function handleGoogleSignIn(response) {
     } catch (error) {
         console.error('Google Login エラー:', error);
         showToast('エラー: ' + error.message);
+    }
+}
+
+// ========================================
+// 価格帯の同期機能
+// ========================================
+
+/**
+ * 価格帯を保存して全フィールドを同期（ランキング・検索から呼び出す用）
+ */
+async function updatePriceRange(minPrice, maxPrice) {
+    if (!currentUser) return;
+
+    // ローカルとlocalStorageを更新
+    currentUser.priceMin = minPrice || '';
+    currentUser.priceMax = maxPrice || '';
+    localStorage.setItem('room_user', JSON.stringify(currentUser));
+
+    // すべてのフィールドを同期
+    const priceMinVal = minPrice || '';
+    const priceMaxVal = maxPrice || '';
+
+    // ランキングタブ
+    const rankingMin = document.getElementById('ranking-min-price');
+    const rankingMax = document.getElementById('ranking-max-price');
+    if (rankingMin) rankingMin.value = priceMinVal;
+    if (rankingMax) rankingMax.value = priceMaxVal;
+
+    // 商品検索タブ
+    const searchMin = document.getElementById('search-min-price');
+    const searchMax = document.getElementById('search-max-price');
+    if (searchMin) searchMin.value = priceMinVal;
+    if (searchMax) searchMax.value = priceMaxVal;
+
+    // 設定モーダル
+    const settingsMin = document.getElementById('settings-min-price');
+    const settingsMax = document.getElementById('settings-max-price');
+    if (settingsMin) settingsMin.value = priceMinVal;
+    if (settingsMax) settingsMax.value = priceMaxVal;
+
+    // バックエンドにも保存（非同期、エラーは無視）
+    try {
+        await callApi('updateSettings', {
+            email: currentUser.email,
+            priceMin: priceMinVal,
+            priceMax: priceMaxVal,
+            customPrompt: currentUser.customPrompt || ''
+        });
+    } catch (err) {
+        console.error('価格帯の保存に失敗:', err);
+        // エラーでもUIは更新されているので、無視
     }
 }
