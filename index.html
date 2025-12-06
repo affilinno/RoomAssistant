@@ -67,97 +67,81 @@
       </div>
     </div>
 
-    <!-- Dashboard View -->
-    <div id="dashboard-view" style="display: none;">
+    <i class="fas fa-info-circle"></i> 設定された価格帯でランダムなジャンルから商品を表示します。
+    </p>
+    <button class="btn search-btn" onclick="loadRandomGenres()"><i class="fas fa-sync-alt"></i> 更新</button>
+    </div>
+    </div>
 
-      <!-- Premium Toolbar -->
-      <div id="premium-toolbar" class="premium-toolbar hidden">
-        <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('random')"><i class="fas fa-random"></i> ランダム表示</button>
-          <button class="tab-btn" onclick="switchTab('ranking')"><i class="fas fa-trophy"></i> ランキング</button>
-          <button class="tab-btn" onclick="switchTab('search')"><i class="fas fa-search"></i> 商品検索</button>
-          <button class="tab-btn" onclick="switchTab('url')"><i class="fas fa-link"></i> URL投稿</button>
+    <!-- Tab Content: Ranking -->
+    <div id="tab-ranking" class="tab-content hidden">
+      <div class="filter-section">
+        <div class="filter-row">
+          <select id="ranking-genre" class="filter-select">
+            <!-- ジャンルは動的読み込み -->
+          </select>
         </div>
+        <div class="filter-row">
+          <label class="filter-label">価格帯</label>
+          <input type="number" id="ranking-min-price" placeholder="最低価格" class="price-input">
+          <span class="price-separator">〜</span>
+          <input type="number" id="ranking-max-price" placeholder="最高価格" class="price-input">
+          <span class="price-unit">円</span>
+        </div>
+        <button class="btn full-width-btn" onclick="loadRankingByGenre()"><i class="fas fa-search"></i> 表示</button>
+      </div>
+    </div>
 
-        <!-- Tab Content: Random -->
-        <div id="tab-random" class="tab-content active">
-          <div class="filter-section">
-            <p style="color:#666; margin-bottom:1rem;">
-              <i class="fas fa-info-circle"></i> 設定された価格帯でランダムなジャンルから商品を表示します。
-            </p>
-            <button class="btn search-btn" onclick="loadRandomGenres()"><i class="fas fa-sync-alt"></i> 更新</button>
+    <!-- Tab Content: Search -->
+    <div id="tab-search" class="tab-content hidden">
+      <form onsubmit="handleSearch(event, 'keyword')">
+        <div class="filter-section">
+          <div class="filter-row">
+            <input type="text" id="search-keyword" placeholder="商品名を入力..." required class="search-input">
           </div>
-        </div>
-
-        <!-- Tab Content: Ranking -->
-        <div id="tab-ranking" class="tab-content hidden">
-          <div class="filter-section">
-            <div class="filter-row">
-              <select id="ranking-genre" class="filter-select">
-                <!-- ジャンルは動的読み込み -->
-              </select>
-            </div>
-            <div class="filter-row">
-              <label class="filter-label">価格帯</label>
-              <input type="number" id="ranking-min-price" placeholder="最低価格" class="price-input">
-              <span class="price-separator">〜</span>
-              <input type="number" id="ranking-max-price" placeholder="最高価格" class="price-input">
-              <span class="price-unit">円</span>
-            </div>
-            <button class="btn full-width-btn" onclick="loadRankingByGenre()"><i class="fas fa-search"></i> 表示</button>
+          <div class="filter-row">
+            <label class="filter-label">価格帯</label>
+            <input type="number" id="search-min-price" placeholder="最低価格" class="price-input">
+            <span class="price-separator">〜</span>
+            <input type="number" id="search-max-price" placeholder="最高価格" class="price-input">
+            <span class="price-unit">円</span>
           </div>
+          <button type="submit" class="btn full-width-btn"><i class="fas fa-search"></i> 検索</button>
         </div>
+      </form>
+    </div>
 
-        <!-- Tab Content: Search -->
-        <div id="tab-search" class="tab-content hidden">
-          <form onsubmit="handleSearch(event, 'keyword')">
-            <div class="filter-section">
-              <div class="filter-row">
-                <input type="text" id="search-keyword" placeholder="商品名を入力..." required class="search-input">
-              </div>
-              <div class="filter-row">
-                <label class="filter-label">価格帯</label>
-                <input type="number" id="search-min-price" placeholder="最低価格" class="price-input">
-                <span class="price-separator">〜</span>
-                <input type="number" id="search-max-price" placeholder="最高価格" class="price-input">
-                <span class="price-unit">円</span>
-              </div>
-              <button type="submit" class="btn full-width-btn"><i class="fas fa-search"></i> 検索</button>
-            </div>
-          </form>
+    <!-- Tab Content: URL -->
+    <div id="tab-url" class="tab-content hidden">
+      <form onsubmit="handleSearch(event, 'url')">
+        <div class="filter-section">
+          <input type="text" id="search-url" placeholder="楽天市場の商品URLまたは商品情報を貼り付け..." oninput="extractUrlFromInput()"
+            class="url-input-full">
+          <button type="submit" class="btn full-width-btn"><i class="fas fa-magic"></i> 作成</button>
         </div>
+      </form>
+    </div>
+    </div>
 
-        <!-- Tab Content: URL -->
-        <div id="tab-url" class="tab-content hidden">
-          <form onsubmit="handleSearch(event, 'url')">
-            <div class="filter-section">
-              <input type="text" id="search-url" placeholder="楽天市場の商品URLまたは商品情報を貼り付け..." oninput="extractUrlFromInput()"
-                class="url-input-full">
-              <button type="submit" class="btn full-width-btn"><i class="fas fa-magic"></i> 作成</button>
-            </div>
-          </form>
-        </div>
+    <!-- Premium Promo (Visible for Free users) -->
+    <div id="premium-promo" class="promo-banner hidden">
+      <div class="promo-content">
+        <h3><i class="fas fa-crown"></i> プレミアム機能を使ってみませんか？</h3>
+        <p>商品検索、URL投稿、AIキャラクター設定など、便利な機能が解放されます。</p>
+        <button class="btn promo-btn" onclick="showSettings()">設定からアップグレード</button>
       </div>
+    </div>
 
-      <!-- Premium Promo (Visible for Free users) -->
-      <div id="premium-promo" class="promo-banner hidden">
-        <div class="promo-content">
-          <h3><i class="fas fa-crown"></i> プレミアム機能を使ってみませんか？</h3>
-          <p>商品検索、URL投稿、AIキャラクター設定など、便利な機能が解放されます。</p>
-          <button class="btn promo-btn" onclick="showSettings()">設定からアップグレード</button>
-        </div>
-      </div>
+    <!-- Home Refresh Button (for Free users) -->
+    <div id="home-refresh" class="home-refresh hidden">
+      <button class="btn refresh-btn" onclick="loadDashboardData()">
+        <i class="fas fa-sync-alt"></i> 新しいジャンルを表示
+      </button>
+    </div>
 
-      <!-- Home Refresh Button (for Free users) -->
-      <div id="home-refresh" class="home-refresh hidden">
-        <button class="btn refresh-btn" onclick="loadDashboardData()">
-          <i class="fas fa-sync-alt"></i> 新しいジャンルを表示
-        </button>
-      </div>
-
-      <div id="dashboard-content">
-        <!-- Genres/Search Results will be loaded here -->
-      </div>
+    <div id="dashboard-content">
+      <!-- Genres/Search Results will be loaded here -->
+    </div>
     </div>
   </main>
 
