@@ -367,9 +367,12 @@ function switchTab(tabName, event) {
         }
     }
 
-    // コンテンツの更新
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    // コンテンツの更新（activeクラスのみ使用）
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    const targetContent = document.getElementById(`tab-${tabName}`);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
 
     // コンテンツクリア
     document.getElementById('dashboard-content').innerHTML = '';
@@ -557,75 +560,70 @@ function updatePremiumUI() {
 function showItemModal(item) {
     const modal = document.getElementById('modal');
     const content = document.getElementById('modal-content');
+    modal.style.display = 'flex';
 
     content.innerHTML = `
         <button class="modal-close" onclick="closeModal()">&times;</button>
-        <div class="modal-body">
-            <div class="modal-image">
-                <img src="${item.imageUrl}" alt="${item.name}">
-            </div>
-            <div class="modal-details">
-                <h2 class="modal-title">${item.name}</h2>
-                <div class="modal-price">¥${item.price.toLocaleString()}</div>
-                <div class="modal-shop"><i class="fas fa-store"></i> ${item.shopName}</div>
-                
-                <div class="action-buttons">
-                    <a href="${item.url}" target="_blank" class="btn btn-outline">
-                        <i class="fas fa-external-link-alt"></i> 楽天市場で見る
-                    </a>
-                    <button class="btn" onclick="generatePost('${item.name.replace(/'/g, "\\'")}'))" id="gen-btn">
-                        <i class="fas fa-magic"></i> 紹介文を生成
-                    </button>
-                </div>
-                
-                <div id="generated-content" class="generated-content hidden">
-                    <h4>生成された紹介文</h4>
-                    <textarea id="post-text" readonly></textarea>
-                    <button class="btn copy-btn" onclick="copyText()">
-                        <i class="fas fa-copy"></i> コピー
-                    </button>
-                </div>
-            </div>
+        <div style="text-align:center">
+            <img src="${item.imageUrl}" style="max-height:200px; border-radius:8px; margin-bottom:1rem;">
+            <h3 style="font-size:1rem; margin:1rem 0;">${item.name}</h3>
         </div>
+        <div class="loading-spinner"></div>
+        <div style="text-align:center; color:#666; margin-top:1rem;">AI紹介文を生成中...</div>
     `;
 
-    modal.style.display = 'flex';
+    const customPrompt = currentUser.plan === 'Premium' ? (currentUser.customPrompt || '') : '';
+
+    callApi('generateRecommendation', { itemName: item.name, customPrompt: customPrompt })
+        .then(res => {
+            if (!res.success) throw new Error(res.message || 'AI生成に失敗しました');
+            const text = res.data;
+            const roomUrl = `https://room.rakuten.co.jp/mix?itemcode=${encodeURIComponent(item.code)}&scid=we_room_upc60`;
+            content.innerHTML = `
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div style="text-align:center; margin-bottom:1rem;">
+                <img src="${item.imageUrl}" style="max-height:150px; border-radius:8px;">
+                <h3 style="font-size:1rem; margin:0.5rem 0;">${item.name}</h3>
+                <div style="color:var(--primary); font-weight:bold; font-size:1.1rem;">¥${item.price.toLocaleString()}</div>
+            </div>
+            <label style="font-weight:bold; font-size:0.9rem; display:block; margin-bottom:0.5rem;">
+                <i class="fas fa-magic"></i> AI生成紹介文:
+            </label>
+            <div class="generated-text" id="copy-target">${text}</div>
+            <div style="display:flex; gap:1rem; flex-direction:column; margin-top:1.5rem;">
+                <button class="btn" onclick="copyAndOpen('${roomUrl.replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i> 紹介文をコピーしてROOMへ</button>
+                <a href="${item.url}" target="_blank" class="btn" style="background:#666; text-align:center; text-decoration:none;"><i class="fas fa-external-link-alt"></i> 楽天市場で見る</a>
+                <button class="btn" style="background:#ccc; color:#333;" onclick="closeModal()">閉じる</button>
+            </div>
+        `;
+        }).catch(err => {
+            console.error('AI生成エラー:', err);
+            content.innerHTML = `<button class="modal-close" onclick="closeModal()">&times;</button><div style="color:red; text-align:center; margin:2rem 0;"><i class="fas fa-exclamation-circle"></i> エラー: ${err.message}</div><button class="btn" style="background:#666;" onclick="closeModal()">閉じる</button>`;
+        });
 }
 
 function closeModal() {
     document.getElementById('modal').style.display = 'none';
 }
 
-async function generatePost(itemName) {
-    const btn = document.getElementById('gen-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
-
-    try {
-        const res = await callApi('generateRecommendation', {
-            itemName: itemName,
-            customPrompt: currentUser.customPrompt
-        });
-
-        if (res.success) {
-            document.getElementById('generated-content').classList.remove('hidden');
-            document.getElementById('post-text').value = res.data;
-        } else {
-            showToast(res.message);
-        }
-    } catch (err) {
-        showToast('エラー: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic"></i> 再生成';
+function copyAndOpen(url) {
+    const textElement = document.getElementById('copy-target');
+    if (!textElement) {
+        showToast('コピー対象が見つかりません');
+        return;
     }
-}
-
-function copyText() {
-    const text = document.getElementById('post-text');
-    text.select();
-    document.execCommand('copy');
-    showToast('コピーしました！');
+    const text = textElement.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ コピーしました！ROOMを開きます...');
+        setTimeout(() => {
+            window.open(url, '_blank');
+            closeModal();
+        }, 500);
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        showToast('⚠️ コピーに失敗しました。手動でコピーしてください。');
+        setTimeout(() => { window.open(url, '_blank'); }, 1000);
+    });
 }
 
 // === 共通関数 ===
