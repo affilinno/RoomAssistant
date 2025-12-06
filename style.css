@@ -44,7 +44,7 @@
 }
 
 .tab-content.active {
-  display: block;
+  display: block !important;
   animation: fadeIn 0.3s;
 }
 
@@ -294,7 +294,7 @@ main {
 }
 
 .form-group label {
-  display: block;
+  display: block !important;
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.9rem;
