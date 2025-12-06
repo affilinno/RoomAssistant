@@ -2,7 +2,7 @@
 //let currentUser = null;
 //let allGenres = [];
 // GASのURLをハードコーディング
-const API_URL = 'https://script.google.com/macros/s/AKfycbxh22NyqWYQqb3WYyCCyiXBC7KT5PdBoB6f-apI4sWAwD1Uazwb6Nx14-HFOWQGJQGPrg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw41STeL1duJ8d7csTySSZOnyHx8IVPnGoxPoj0lntB6D5sNdq9jhb5ufN_ny0cywQOwg/exec';
 
 // 状態管理
 let currentUser = null;
@@ -12,6 +12,7 @@ let currentTab = 'random';
 document.addEventListener('DOMContentLoaded', () => {
     checkLogin();
     checkStripeCallback();
+    initGoogleSignIn(); // Google認証の初期化
 });
 
 
@@ -677,5 +678,85 @@ function goToRandom() {
         } else {
             loadDashboardData();
         }
+    }
+}
+
+// ========================================
+// Google認証（新規追加）
+// ========================================
+
+/**
+ * Google Sign-Inを初期化
+ */
+async function initGoogleSignIn() {
+    try {
+        // Google Client IDを取得
+        const res = await callApi('getGoogleClientId', {});
+
+        if (!res.success || !res.clientId) {
+            console.log('Google Client ID が設定されていません');
+            return;
+        }
+
+        const clientId = res.clientId;
+
+        // プレースホルダーの場合は初期化しない
+        if (clientId.includes('YOUR_GOOGLE_CLIENT_ID')) {
+            console.log('Google Client ID を設定してください');
+            return;
+        }
+
+        // Google Sign-Inボタンを初期化
+        google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleSignIn
+        });
+
+        // ボタンをレンダリング
+        google.accounts.id.renderButton(
+            document.getElementById('google-signin-button'),
+            {
+                theme: 'outline',
+                size: 'large',
+                text: 'signin_with',
+                width: 300,
+                locale: 'ja'
+            }
+        );
+
+        console.log('Google Sign-In 初期化完了');
+
+    } catch (error) {
+        console.error('Google Sign-In 初期化エラー:', error);
+    }
+}
+
+/**
+ * Googleログインのコールバック
+ */
+async function handleGoogleSignIn(response) {
+    try {
+        const idToken = response.credential;
+
+        showToast('Googleアカウントで認証中...');
+
+        // バックエンドにIDトークンを送信
+        const res = await callApi('googleLogin', {
+            idToken: idToken
+        });
+
+        if (res.success && res.user) {
+            currentUser = res.user;
+            localStorage.setItem('room_user', JSON.stringify(currentUser));
+
+            showToast('✅ ログインしました！');
+            showDashboard();
+        } else {
+            showToast('エラー: ' + (res.message || 'ログインに失敗しました'));
+        }
+
+    } catch (error) {
+        console.error('Google Login エラー:', error);
+        showToast('エラー: ' + error.message);
     }
 }
