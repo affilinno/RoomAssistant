@@ -349,12 +349,22 @@ async function reloadUserData() {
 
 // === ダッシュボード機能 ===
 
-function switchTab(tabName) {
+function switchTab(tabName, event) {
     currentTab = tabName;
 
     // タブボタンの更新
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+
+    // eventが存在する場合のみ、クリックされたボタンをアクティブにする
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    } else {
+        // eventがない場合（自動切り替え時）は、tabNameに基づいてボタンを探す
+        const targetBtn = document.querySelector(`[onclick*="switchTab('${tabName}')"]`);
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+        }
+    }
 
     // コンテンツの更新
     document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
