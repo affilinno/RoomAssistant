@@ -2,7 +2,7 @@
 //let currentUser = null;
 //let allGenres = [];
 // GASのURLをハードコーディング
-const API_URL = 'https://script.google.com/macros/s/AKfycbzGj7vEfjqLoCopIpQSVTqMQ1KBUzSKe40vu2TSLSPgzVbvG96X3qFKnT8rjFKGhA5hgA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx5PYVzjV6cBl1jDge79P_jpkejx91lAY6zXl5RADPzrrU73tyegut8qX5m6OFBAURmPw/exec';
 
 // 状態管理
 let currentUser = null;
@@ -26,22 +26,53 @@ function checkLogin() {
 }
 
 // Stripeからのコールバック処理
-function checkStripeCallback() {
+async function checkStripeCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     const success = urlParams.get('success');
     const sessionId = urlParams.get('session_id');
 
     if (success === 'true' && sessionId) {
         // 決済成功通知
-        showToast('決済を確認しました。反映までしばらくお待ちください。');
+        showToast('決済を処理中です。しばらくお待ちください...');
 
         // URLパラメータをクリーンに
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // ユーザー情報を再取得（プラン更新を反映）
-        setTimeout(() => {
-            reloadUserData();
-        }, 2000);
+        // Stripe同期を実行してユーザー情報を再取得
+        try {
+            // Webhookが処理されるまで少し待機
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Stripe情報を同期
+            const syncResult = await callApi('syncWithStripe', {
+                email: currentUser ? currentUser.email : null
+            });
+
+            if (syncResult.success && syncResult.user) {
+                currentUser = syncResult.user;
+                localStorage.setItem('room_user', JSON.stringify(currentUser));
+
+                // UIを更新
+                updatePremiumUI();
+
+                // Premiumプランになっていたら成功メッセージ
+                if (currentUser.plan === 'Premium') {
+                    showToast('✅ Premiumプランへのアップグレードが完了しました！');
+
+                    // ダッシュボードを再読み込み
+                    if (currentUser.plan === 'Premium') {
+                        switchTab('random');
+                    }
+                } else {
+                    showToast('決済を確認しました。反映までしばらくお待ちください。');
+                }
+            } else {
+                showToast('決済を確認しました。反映までしばらくお待ちください。');
+            }
+        } catch (err) {
+            console.error('Stripe同期エラー:', err);
+            showToast('決済を確認しました。反映までしばらくお待ちください。');
+        }
     } else if (success === 'false') {
         showToast('決済がキャンセルされました。');
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -216,10 +247,22 @@ async function cancelSubscription() {
 
         if (res.success) {
             showToast(res.message);
-            // 解約予約フラグを立てる（プランはPremiumのまま）
-            currentUser.cancelAtPeriodEnd = true;
-            localStorage.setItem('room_user', JSON.stringify(currentUser));
-            updateSettingsUI(true);
+
+            // Stripe情報を同期して最新状態を取得
+            const syncResult = await callApi('syncWithStripe', {
+                email: currentUser.email
+            });
+
+            if (syncResult.success && syncResult.user) {
+                currentUser = syncResult.user;
+                localStorage.setItem('room_user', JSON.stringify(currentUser));
+                updateSettingsUI(true);
+            } else {
+                // 同期に失敗した場合は手動でフラグを立てる
+                currentUser.cancelAtPeriodEnd = true;
+                localStorage.setItem('room_user', JSON.stringify(currentUser));
+                updateSettingsUI(true);
+            }
         } else {
             showToast('エラー: ' + (res.message || '解約に失敗しました'));
         }
@@ -289,7 +332,7 @@ async function reloadUserData() {
     if (!currentUser) return;
 
     try {
-        const res = await callApi('getUserData', {
+        const res = await callApi('syncWithStripe', {
             email: currentUser.email
         });
 
