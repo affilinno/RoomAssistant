@@ -104,6 +104,9 @@ function showDashboard() {
 
     updatePremiumUI();
 
+    // 保存された価格帯を各タブの入力フィールドに設定
+    setPriceRangeFields();
+
     // 初期タブのロード
     if (currentUser.plan === 'Premium') {
         switchTab('random');
@@ -294,6 +297,10 @@ async function saveSettings() {
             currentUser.priceMax = priceMax;
             currentUser.customPrompt = customPrompt;
             localStorage.setItem('room_user', JSON.stringify(currentUser));
+
+            // 各タブの価格帯フィールドも更新
+            setPriceRangeFields();
+
             showToast('設定を保存しました');
             closeSettings();
         } else {
@@ -560,6 +567,29 @@ function updatePremiumUI() {
         homeRefresh.classList.remove('hidden');
     }
 }
+
+/**
+ * 保存された価格帯を各タブの入力フィールドに設定
+ */
+function setPriceRangeFields() {
+    if (!currentUser) return;
+
+    const priceMin = currentUser.priceMin || '';
+    const priceMax = currentUser.priceMax || '';
+
+    // ランキングタブ
+    const rankingMin = document.getElementById('ranking-min-price');
+    const rankingMax = document.getElementById('ranking-max-price');
+    if (rankingMin) rankingMin.value = priceMin;
+    if (rankingMax) rankingMax.value = priceMax;
+
+    // 商品検索タブ
+    const searchMin = document.getElementById('search-min-price');
+    const searchMax = document.getElementById('search-max-price');
+    if (searchMin) searchMin.value = priceMin;
+    if (searchMax) searchMax.value = priceMax;
+}
+
 
 function showItemModal(item) {
     const modal = document.getElementById('modal');
