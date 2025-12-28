@@ -1,8 +1,5 @@
-// State
-//let currentUser = null;
-//let allGenres = [];
-// GASのURLをハードコーディング
-const API_URL = 'https://script.google.com/macros/s/AKfycbwZAzCUxNAJ8vYJqPye-gsB4ldS68z51zj1nKR1I_9riCtXGKOQ4DFqFXnhG77NWkBGeA/exec';
+// API URL (Google Apps ScriptのデプロイURL)
+const API_URL = (typeof GAS_API_URL !== 'undefined') ? GAS_API_URL : 'https://script.google.com/macros/s/AKfycbz_YOUR_DEPLOY_ID/exec';
 
 // 状態管理
 let currentUser = null;
